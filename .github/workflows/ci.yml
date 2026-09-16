@@ -1,0 +1,72 @@
+name: CI/CD - Fuel Batch Scheduler
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python test_scheduler.py
+
+      - name: Smoke-test the API boots
+        run: |
+          python app.py &
+          SERVER_PID=$!
+          sleep 3
+          curl -f http://localhost:5000/health || (kill $SERVER_PID && exit 1)
+          kill $SERVER_PID
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Render auto-deploys on push once the service is connected to this repo
+      # via the Render dashboard (see README "Deploying" section) -- no action
+      # needed here for that path. This step is a belt-and-suspenders trigger
+      # using Render's Deploy Hook URL, useful if auto-deploy is off or you
+      # want deploys gated strictly behind this workflow's test job.
+      - name: Trigger Render deploy
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+      # Alternative targets -- uncomment whichever you actually use instead:
+      #
+      # Fly.io:
+      # - uses: superfly/flyctl-actions/setup-flyctl@master
+      # - run: flyctl deploy --remote-only
+      #   env:
+      #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      #
+      # Railway:
+      # - run: npx @railway/cli up --service fuel-batch-scheduler-api
+      #   env:
+      #     RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Notify Slack on deploy failure
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"⚠️ Fuel Scheduler deploy failed on main"}' \
+            "$SLACK_WEBHOOK_URL"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: fuel-batch-scheduler-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 30
+    healthCheckPath: /health
+    envVars:
+      - key: ALLOWED_ORIGIN
+        value: "*"   # tighten to your dashboard's real origin before go-live
+      - key: FLASK_DEBUG
+        value: "false"

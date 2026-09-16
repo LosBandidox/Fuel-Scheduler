@@ -194,6 +194,28 @@ def compute_executive_metrics(result: ScheduleResult) -> dict:
     }
 
 
+@app.route("/")
+def index():
+    """
+    Friendly root route -- the API itself has no UI, so this just points
+    anyone landing here (a judge, a curious teammate) at something useful
+    instead of a bare 404.
+    """
+    return jsonify({
+        "service": "Fuel Batch Truck Scheduler API",
+        "status": "running",
+        "endpoints": {
+            "health": "/health",
+            "run_schedule": "POST /schedule/run",
+            "current_schedule": "/schedule/current",
+            "report_event": "POST /schedule/event",
+            "executive_metrics": "/metrics/executive",
+            "events_feed": "/events/feed",
+            "metrics_trend": "/metrics/trend",
+        },
+    })
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "time": datetime.utcnow().isoformat()})

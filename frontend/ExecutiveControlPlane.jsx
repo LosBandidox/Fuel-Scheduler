@@ -10,7 +10,7 @@ import {
   Radio,
 } from "lucide-react";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://fuel-batch-scheduler-api.onrender.com";
 
 const COLORS = {
   bg: "#10141A",
